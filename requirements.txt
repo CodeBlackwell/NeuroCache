@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+langchain
+faiss-cpu
+openai
+python-multipart
+beautifulsoup4
+pydantic
