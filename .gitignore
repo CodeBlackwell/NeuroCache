@@ -1,0 +1,4 @@
+# Ignore patterns
+__pycache__/
+.env
+.windsurf
