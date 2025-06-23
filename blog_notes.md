@@ -47,3 +47,8 @@ A living document for development insights, debugging, design decisions, and mil
 ---
 
 ## Add new entries below
+
+### 2025-06-22
+- **Milestone:** Completed robust FAISS vector store implementation (`vector_store.py`), including user-specific index creation, embedding addition, and similarity search.
+- **Testing:** Added comprehensive unit tests for all vector store operations. All tests pass with no warnings, thanks to new `pytest.ini` filtering FAISS/Numpy deprecation warnings.
+- **Lesson:** Proactive warning suppression and modular test design keeps the project clean and maintainable as dependencies evolve.
