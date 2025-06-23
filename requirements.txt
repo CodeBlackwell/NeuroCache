@@ -1,8 +1,11 @@
 fastapi
 uvicorn[standard]
 langchain
+langchain-community
 faiss-cpu
 openai
 python-multipart
 beautifulsoup4
 pydantic
+pytest
+pypdf
