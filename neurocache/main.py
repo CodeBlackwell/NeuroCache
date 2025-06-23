@@ -1,6 +1,14 @@
+from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Optional, List
+import os, uuid
+from pathlib import Path
+from langchain.embeddings import OpenAIEmbeddings
+from neurocache.core.ingestion import load_document, chunk_and_augment
+from neurocache.core.vector_store import create_index, add_embeddings
+
+load_dotenv()
 
 app = FastAPI(
     title="NeuroCache API",
@@ -23,11 +31,28 @@ async def ingest(
     url: Optional[str] = Form(None),
 ):
     """Ingest a document file or URL for a given user."""
-    # TODO: call ingestion pipeline
-    return {
-        "status": "not_implemented",
-        "detail": "Ingestion pipeline not implemented yet",
-    }
+    # Ingest pipeline
+    temp_dir = Path(__file__).parent / "data" / "temp_uploads"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    file_path = None
+    if file:
+        filename = f"{uuid.uuid4()}_{file.filename}"
+        file_path = str(temp_dir / filename)
+        with open(file_path, "wb") as f:
+            f.write(await file.read())
+    # Load text
+    text = load_document(file_path=file_path, url=url)
+    # Chunk and augment
+    metadata = {"source": file.filename if file else url}
+    chunks = chunk_and_augment(text, metadata)
+    # Create and populate vector store
+    create_index(user_id)
+    embedder = OpenAIEmbeddings()
+    texts = [chunk["text"] for chunk in chunks]
+    embeddings = embedder.embed_documents(texts)
+    metadatas = [chunk["metadata"] for chunk in chunks]
+    add_embeddings(user_id, embeddings, metadatas)
+    return {"status": "success", "ingested_chunks": len(chunks)}
 
 
 @app.post("/query")
