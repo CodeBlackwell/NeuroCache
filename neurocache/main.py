@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 import os, uuid
 from pathlib import Path
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_community.embeddings import OpenAIEmbeddings
 from neurocache.core.ingestion import load_document, chunk_and_augment
 from neurocache.core.vector_store import create_index, add_embeddings
 
@@ -32,8 +32,8 @@ async def ingest(
 ):
     """Ingest a document file or URL for a given user."""
     # Ingest pipeline
-    temp_dir = Path(__file__).parent / "data" / "temp_uploads"
-    temp_dir.mkdir(parents=True, exist_ok=True)
+    from neurocache.config import TEMP_UPLOADS_DIR
+    temp_dir = TEMP_UPLOADS_DIR
     file_path = None
     if file:
         filename = f"{uuid.uuid4()}_{file.filename}"
@@ -58,12 +58,31 @@ async def ingest(
 @app.post("/query")
 async def query_endpoint(request: QueryRequest):
     """Query a user's vector store."""
-    # TODO: call vector store manager
+    # Generate embedding for the question
+    embedder = OpenAIEmbeddings()
+    query_embedding = embedder.embed_query(request.question)
+    # Query vector store
+    from neurocache.core.vector_store import query_index
+    results = query_index(request.user_id, query_embedding, request.top_k)
+    # Optionally filter by metadata
+    if request.metadata_filters:
+        def match(meta):
+            return all(meta.get(k) == v for k, v in request.metadata_filters.items())
+        results = [r for r in results if match(r)]
+    return {"results": results}
+
     return {"answers": [], "detail": "Query pipeline not implemented yet"}
 
 
 @app.get("/users")
 async def list_users():
     """List all user IDs with existing vector stores."""
-    # TODO: implement user store tracking
-    return {"users": []}
+    from neurocache.config import USER_STORES_DIR
+    if not USER_STORES_DIR.exists():
+        return {"user_ids": []}
+    files = os.listdir(USER_STORES_DIR)
+    user_ids = set()
+    for f in files:
+        if f.endswith(".index"):
+            user_ids.add(f[:-6])
+    return {"user_ids": sorted(user_ids)}
